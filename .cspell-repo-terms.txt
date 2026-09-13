@@ -443,6 +443,7 @@ fromlist
 fromtimestamp
 frontmatter
 frozenset
+fsencode
 fullmatch
 gemini
 generativeai
@@ -899,6 +900,7 @@ typeerror
 typer
 typosquat
 typosquats
+udcff
 tzdata
 ufeff
 unaliased
