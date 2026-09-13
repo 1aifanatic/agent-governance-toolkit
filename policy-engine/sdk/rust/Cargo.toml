@@ -11,8 +11,9 @@ readme = "../../README.md"
 # SECURITY: the bundled annotator dispatchers read host environment
 # credentials. AGT gated that on manifest provenance through a
 # `url_sourced` flag, so a manifest fetched over the network could not
-# reach host credentials. agent-control-spec 0.4.0-alpha.1 dropped the
-# gate while still supporting URL `extends`, so the complete chain
+# reach host credentials. agent-control-spec dropped the gate in
+# 0.4.0-alpha.1 and the pinned 0.4.0-alpha.3 still has none, while URL
+# `extends` remains supported, so the complete chain
 # remote manifest -> llm/endpoint annotator -> attacker endpoint ->
 # `api_key_env: <host secret>` is reachable.
 #
@@ -59,10 +60,22 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "=0.10.9"
 tempfile = "=3.27.0"
+# Same parser the upstream loader canonicalizes fetch targets with; the
+# SSRF guard in `host::manifest_from_url` evaluates `Url::host()`.
+url = "=2.5.8"
 
 [dev-dependencies]
 # Used by the conformance corpus runner to validate case files.
 jsonschema = { version = "=0.17.1", default-features = false }
+
+# Imports `agent_control_specification_core::validate_acs_artifacts`, which
+# core gates behind its `opa` feature. Without this entry
+# `cargo test -p agent_control_specification` (default features) fails to
+# compile; the workspace build only passed because sibling members unify
+# `core/opa` in.
+[[test]]
+name = "artifact_validation"
+required-features = ["opa"]
 
 [[example]]
 name = "basic_host"

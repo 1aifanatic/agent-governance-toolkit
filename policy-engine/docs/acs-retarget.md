@@ -96,13 +96,50 @@ identity profile.
 
 ## Manifests
 
-Two breaking changes, both already applied across this repository.
+Three breaking changes, all already applied across this repository.
 
 1. `agent_control_specification_version` must be `0.4.0-alpha.1`. The engine accepts no
    other value and rejects at parse time.
 2. The path root `$policy_target` is now `$target`. The manifest grammar ships no alias
    and rejects the old root as `unknown path root`. Note that agent-hooks does accept
    `$policy_target` as a deprecated alias on *transform* paths, so the two layers differ.
+3. `bundle_url`, `system_prompt_file` and `system_prompt_url` are removed. See the next
+   section.
+
+### Removed manifest fields
+
+The embedded engine implemented three fields that `agent-control-spec`
+0.4.0-alpha.3 never had (`git log -S bundle_url` on the upstream engine is
+empty): a rego `bundle_url` (remote bundle, fetched and pin-checked at
+dispatch), and the `llm` annotator's `system_prompt_file` and
+`system_prompt_url` prompt sources. Upstream's `RegoPolicyConfig::adapter_config`,
+`PolicyBinding::adapter_config`, `AnnotatorConfig::fields` and
+`AnnotationConfig::fields` are open maps, so a manifest declaring one of these
+keys parsed and validated cleanly while the feature was silently absent: the
+annotator ran with `DEFAULT_SYSTEM_PROMPT`, and the rego policy denied every
+request with `runtime_error:policy_invocation_failed` and no diagnostic. Every
+fail-closed check the old engine had for them (`bundle` with `bundle_url`, an
+unpinned or non-HTTPS URL, inline and file prompt together) had turned into a
+silent accept.
+
+AGT now fails closed instead. `agent_control_specification_core::reject_removed_manifest_fields`
+walks each policy definition, each annotator declaration, and each intervention
+point's policy binding and annotation bindings, and returns
+`runtime_error:manifest_invalid` naming the location and the field. It runs in
+`validate_manifest_yaml`, `validate_manifest_overlay_yaml`, every `AgentControl`
+constructor, `manifest_from_url`, every C ABI `acs_builder_from_*` loader, and
+the Python and Node `from_*` constructors. Both copies of `manifest.schema.json`
+keep the three keys as `not: {}` properties (on the rego policy, the policy
+binding, the annotator and the annotation binding), because the enclosing
+objects allow additional properties and dropping the keys would accept them
+silently.
+
+Migration: inline the value. A `system_prompt_file` becomes `system_prompt`
+with the file's text; a `system_prompt_url` becomes `system_prompt` as well; a
+`bundle_url` becomes a local `bundle` path shipped with the manifest, or a host
+supplied policy dispatcher that fetches the bundle itself. Restoring a remote
+prompt or bundle source is an upstream proposal against `agent-control-spec`.
+`SPECIFICATION.md` sections 2.3, 10 and 12.1 and the schema record the removal.
 
 `core/src/manifest_yaml.rs` re-exports the engine's public `SUPPORTED_VERSIONS`.
 Its legacy `SUPPORTED_MANIFEST_VERSIONS` array is derived from that list, with
@@ -124,6 +161,7 @@ shapes match the legacy consumer contract.
 | `from_url`, `policy_labels`, `validate_overlay` have no equivalent | [#23](https://github.com/responsibleai/agent-control-spec/issues/23) |
 | Original binding validation gap, resolved upstream after alpha.1 | [#14](https://github.com/responsibleai/agent-control-spec/issues/14) |
 | Publisher provenance and organization ownership review condition | [#24](https://github.com/responsibleai/agent-control-spec/issues/24) |
+| `bundle_url`, `system_prompt_file`, `system_prompt_url` have no implementation; AGT rejects them | none filed; restoring them is a proposal, see "Removed manifest fields" |
 
 ### Security, unresolved
 
@@ -227,31 +265,77 @@ the process.
 ## Work remaining in this repository
 
 `SPECIFICATION.md` sections beyond the verdict set, host obligations, approval
-path and reason tables were retargeted alongside them, so the normative document
-now describes the implemented contract throughout. The AgentDojo benchmark policy
+path and reason tables were retargeted alongside them, and sections 2.3, 10 and
+12.1 now record the removed remote prompt and bundle fields. One gap remains in
+section 2.3: the pinned engine skips relative path resolution for a URL sourced
+manifest but does not reject its filesystem path fields (`bundle`, `data`,
+`data_paths`), so a remote manifest can name local files; that needs an
+upstream fix and is tracked as an issue rather than patched here. The AgentDojo benchmark policy
 computes its own redacted value and returns a single `transform`. The transform a
-host applies is revalidated against `Limits`, and `manifest_from_url` refuses
-loopback and link-local destinations again.
+host applies is revalidated against `Limits`, and `manifest_from_url` runs an
+SSRF guard over the URL before anything is fetched.
 
-That last guard covers the URL a caller passes and nothing deeper. A nested
-`extends` URL inside a fetched manifest resolves through the loader in
-`agent-control-spec`, which has no equivalent check, and the guard resolves the
-host once rather than revalidating after DNS resolution or a redirect. Both sit
-in the same upstream gap as issue #20, so treat the guard as a barrier against
-the obvious case and not as a boundary.
+### The `manifest_from_url` guard
 
-### Before this merges
+The guard parses the URL with the `url` crate, the same parser the upstream
+loader canonicalizes the fetch target with, and evaluates `Url::host()`. An
+earlier port hand-split the authority and called `str::parse::<IpAddr>`, which
+accepts only dotted-quad literals; `127.1`, `2130706433`, `0x7f000001`,
+`0177.0.0.1` and `127.0.0<TAB>.1` passed it and were then canonicalized to
+`127.0.0.1` by the fetcher, which connected. The test
+`manifest_from_url_blocks_ssrf_targets` now carries every one of those forms,
+and `manifest_from_url_never_connects_to_a_blocked_literal` binds a loopback
+listener and asserts no connection arrives.
 
-The review required trusted publishing, repository metadata and an organization
-or team co-owner for `agent-control-spec`. Registry APIs checked on September 8,
-2026 show repository metadata and trusted publication for the selected alpha.3
-artifact, bound to upstream commit `4c47b57033b98c0d2ccf1b94624f058815db0a9c`.
-Its downloaded crate checksum was verified against the registry. The registry
-still lists one individual owner, so the reviewer's ownership condition is
-not waived. Upstream
-[#24](https://github.com/responsibleai/agent-control-spec/issues/24) remains open.
-Merge still requires that condition to be satisfied or an explicit maintainer
-decision changing it.
+Blocked destinations: loopback, the unspecified address and `0.0.0.0/8`,
+broadcast, link-local (`169.254.0.0/16`, `fe80::/10`), RFC 1918 private
+ranges, the shared address space `100.64.0.0/10`, IPv6 unique-local
+`fc00::/7` and site-local `fec0::/10`, and the names `localhost`,
+`*.localhost` and `*.local`. IPv4-mapped, IPv4-compatible and NAT64
+well-known-prefix IPv6 literals are checked on their embedded IPv4 address.
+The pre-retarget engine allowed RFC 1918 and unique-local literals so a policy
+could be hosted on an internal HTTPS server by IP; that is no longer allowed,
+and internal hosting must use a hostname.
+
+What the guard does not do, all of it the same upstream gap as issue #20:
+
+- Hostnames other than the three blocked patterns are not resolved. A name that
+  resolves into a blocked range, and DNS rebinding between the check and the
+  connect, need a resolution-time check inside the fetcher.
+- Redirect hops are not re-checked. `agent-control-spec` 0.4.0-alpha.3 hands
+  redirect following to its HTTP client (`max_redirects` from
+  `Limits::max_manifest_url_redirects`, default 5) and exposes no hook to
+  intercept a hop, so a vetted public URL can redirect to a blocked address.
+  The pre-retarget engine followed redirects itself and re-ran each hop through
+  the guard. A host that needs the guard to hold across redirects must pass
+  `max_manifest_url_redirects: 0` (`max_url_redirects=0` in Python,
+  `maxRedirects: 0` in Node). The C ABI `acs_builder_from_url` fetches with
+  the default budget; `acs_builder_set_url_fetch_limits` runs after the fetch
+  and does not reach it.
+- A nested `extends` URL inside the fetched manifest resolves through the
+  upstream loader with no destination check at all.
+
+Treat the guard as a barrier against the obvious case and not as a boundary.
+
+### Registry ownership decision
+
+The review asked for trusted publishing, repository metadata and an
+organization or team co-owner for `agent-control-spec`. Registry APIs checked on
+September 13, 2026 show repository metadata and a trusted-publishing attestation
+for the pinned alpha.3 artifact (GitHub Actions, `responsibleai/agent-control-spec`,
+commit `4c47b57033b98c0d2ccf1b94624f058815db0a9c`), and the downloaded crate
+checksum and unpacked source match the registry and that commit. The same holds
+for `agent-hooks-sdk` 0.1.0-alpha.5.
+
+Both crates still list one individual owner and no team. In August 2026 the
+maintainer accepted that as the state to merge on: the
+sole owner is the same account that maintains this integration, publication is
+bound to a public commit through trusted publishing rather than to that
+account's token, and adding an organization owner is a registry-side change
+that does not alter any byte this tree builds against. Adding the team owner
+stays tracked upstream in
+[#24](https://github.com/responsibleai/agent-control-spec/issues/24); revisit
+this paragraph when it closes.
 
 ### Release and upgrade order
 
