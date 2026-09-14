@@ -530,6 +530,7 @@ fromlist
 fromtimestamp
 frontmatter
 frozenset
+fsencode
 fullmatch
 gazetted
 gemini
@@ -1008,6 +1009,7 @@ typeerror
 typer
 typosquat
 typosquats
+udcff
 tzdata
 ufeff
 unaliased
