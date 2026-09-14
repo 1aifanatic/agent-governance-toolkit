@@ -1016,6 +1016,7 @@ unconfigured
 unicodedata
 uninspectable
 unioned
+unkeyed
 unmigrated
 unparse
 unparseable
