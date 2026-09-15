@@ -600,6 +600,7 @@ isatty
 isawaitable
 iscoroutine
 isdigit
+isdir
 isdisjoint
 isfile
 isfinite
@@ -1022,6 +1023,7 @@ unconfigured
 unicodedata
 uninspectable
 unioned
+unlogged
 unkeyed
 unmigrated
 unparse
