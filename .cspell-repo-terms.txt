@@ -6,6 +6,7 @@
 # --- ACS / crypto terms ---
 # --- Additional West/North Africa terms flagged by cspell ---
 # --- African regulatory policy terms ---
+# --- UK regulatory policy terms ---
 # --- CloudEvents / signed audit-event terms ---
 # --- Docker / BuildKit toolchain terms ---
 struction
@@ -26,11 +27,13 @@ struction
 # Egypt PDPL regex fragments (word stems used in pattern matching)
 # Fictitious order-reference prefix used in a Ghana Card regex regression test
 # Ghana
+# GitHub handle, credited in docs/dependency-audits/2026-08-12-agent-governance-sdk-5-cli-packages.md
 # Mauritius (no new abbreviations beyond PDPC)
 # Rwanda
 # Shared currency / country codes used in messages
 # Test name in the TypeScript approval-protocol suite (#3200)
 # URL hostnames in policy file references
+# YAML ordered-map tag (!!omap), cited in dependency audits
 # discarded-verdict census (tests/test_transform_never_dropped.py)
 # dorny/paths-filter — GitHub Actions dependency used in policy-validation.yml
 # git fetch destination-ref syntax, spell-check.yml base fetch
@@ -50,6 +53,7 @@ AKIAFAKE
 AKIAFAKEFORTEST
 AKIDEXAMPLE
 APIM
+APPI
 ASGI
 ATF
 AUXV
@@ -79,6 +83,7 @@ CISA
 CMVK
 CODEOWNERS
 COSE
+Caldicott
 Cdecl
 Centralised
 Chatflows
@@ -94,6 +99,8 @@ DEVNULL
 DISCARDABLE
 DOTALL
 DPC
+DSPT
+DUAA
 DYLD
 DataQualityEvidence
 Dedup
@@ -200,9 +207,13 @@ OpenClaw
 PCRE
 PDPC
 PDPL
+PECR
+PIHBOs
 PIICRI
+PIPEDA
 PKCS
 POPIA
+PRIN
 PSMODULEPATH
 PYTHONHOME
 PYTHONPATH
@@ -242,6 +253,7 @@ SPKI
 SQLGLOT
 SSEMCP
 SVID
+SYSC
 SYSTEMDRIVE
 SYSTEMROOT
 Sandboxed
@@ -598,6 +610,7 @@ isatty
 isawaitable
 iscoroutine
 isdigit
+isdir
 isdisjoint
 isfile
 isfinite
@@ -761,6 +774,7 @@ octo
 octocat
 offence
 offences
+omap
 omitempty
 oncall
 oneshot
@@ -811,6 +825,7 @@ popitem
 popleft
 posixpath
 posonlyargs
+prayagupa
 preimage
 prependpath
 pretool
@@ -1018,6 +1033,7 @@ unconfigured
 unicodedata
 uninspectable
 unioned
+unlogged
 unkeyed
 unmigrated
 unparse
@@ -1124,6 +1140,7 @@ tcpdump
 filterwarnings
 simplefilter
 subn
+recwarn
 
 # --- Azure credential pattern terms (used in credential_redactor regexes) ---
 accountkey
@@ -1146,5 +1163,15 @@ zerotrie
 zerovec
 zmij
 zoneinfo
+warmpool
+sandboxwarmpool
+sandboxtemplate
+KUBECONFIG
+subshell
+subshells
+nohup
+doas
+redirections
+karimad
 رقم
 قومي
