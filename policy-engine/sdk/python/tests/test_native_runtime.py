@@ -185,7 +185,7 @@ extends:
             )
 
     def test_basic_host_scenario_through_native_runtime(self):
-        async def run():
+        async def run(mode):
             control = AgentControl.from_native(MANIFEST_YAML, MockAnnotator(), MockPolicy())
             return await control.evaluate_intervention_point(
                 InterventionPoint.INPUT,
@@ -194,15 +194,27 @@ extends:
                     "actor": {"id": "user-123"},
                     "transport": {"kind": "api_gateway", "route": "/chat"},
                 },
+                mode,
             )
 
-        result = asyncio.run(run())
-
-        self.assertEqual(result.verdict.decision, Decision.TRANSFORM)
-        self.assertEqual(
-            result.transformed_policy_target,
-            {"text": "Please summarize account [REDACTED]."},
-        )
+        for mode in (EnforcementMode.ENFORCE, EnforcementMode.EVALUATE_ONLY):
+            with self.subTest(mode=mode):
+                result = asyncio.run(run(mode))
+                self.assertEqual(result.verdict.decision, Decision.TRANSFORM)
+                self.assertIsNotNone(result.input_identity)
+                self.assertIsNotNone(result.enforced_identity)
+                self.assertEqual(result.action_identity, result.enforced_identity)
+                if mode == EnforcementMode.ENFORCE:
+                    self.assertEqual(
+                        result.transformed_policy_target,
+                        {"text": "Please summarize account [REDACTED]."},
+                    )
+                    self.assertTrue(result.transformed_policy_target_applied)
+                    self.assertNotEqual(result.input_identity, result.enforced_identity)
+                else:
+                    self.assertIsNone(result.transformed_policy_target)
+                    self.assertFalse(result.transformed_policy_target_applied)
+                    self.assertEqual(result.input_identity, result.enforced_identity)
 
     def test_annotator_exception_details_are_sanitized(self):
         class ThrowingAnnotator:
