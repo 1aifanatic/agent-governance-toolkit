@@ -10,6 +10,7 @@ from agent_control_specification import (
     EnforcementMode,
     InterventionPoint,
     PerfTelemetry,
+    action_identity,
     parse_manifest,
     validate_manifest,
     validate_manifest_overlay,
@@ -203,6 +204,7 @@ extends:
                 self.assertEqual(result.verdict.decision, Decision.TRANSFORM)
                 self.assertIsNotNone(result.input_identity)
                 self.assertIsNotNone(result.enforced_identity)
+                self.assertEqual(result.input_identity, action_identity(result.policy_input))
                 self.assertEqual(result.action_identity, result.enforced_identity)
                 if mode == EnforcementMode.ENFORCE:
                     self.assertEqual(
@@ -211,6 +213,16 @@ extends:
                     )
                     self.assertTrue(result.transformed_policy_target_applied)
                     self.assertNotEqual(result.input_identity, result.enforced_identity)
+                    self.assertEqual(
+                        result.enforced_identity,
+                        action_identity({
+                            **result.policy_input,
+                            "policy_target": {
+                                **result.policy_input["policy_target"],
+                                "value": result.transformed_policy_target,
+                            },
+                        }),
+                    )
                 else:
                     self.assertIsNone(result.transformed_policy_target)
                     self.assertFalse(result.transformed_policy_target_applied)
