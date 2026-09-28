@@ -1294,7 +1294,9 @@ pastey
 schemars
 
 # --- Healthcare identifier terms used in HIPAA pattern matching and tests ---
+HPID
 hpid
+Luhn
 luhn
 NPPES
 xmrn
